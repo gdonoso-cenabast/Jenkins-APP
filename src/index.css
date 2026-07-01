@@ -1,0 +1,44 @@
+body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #ffffff; }
+.arena { width: 100vw; height: 100vh; position: relative; }
+.navbar { 
+    position: absolute; top:0; left:0; width:100%; background: #1a1a1a; color: white; 
+    padding: 15px 25px; z-index: 100; display: flex; gap: 15px; align-items: center; box-sizing: border-box;
+    border-bottom: 3px solid #333; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.select-estilizado { 
+    padding: 10px 15px; border-radius: 8px; border: 2px solid #555; 
+    background-color: #333; color: white; font-size: 16px; cursor: pointer;
+    outline: none; transition: all 0.3s ease; appearance: none; min-width: 200px;
+}
+.select-estilizado:focus { border-color: #4caf50; box-shadow: 0 0 8px rgba(76, 175, 80, 0.5); }
+.select-estilizado option { background: #333; color: white; }
+
+.btn-estilizado { 
+    padding: 10px 20px; border-radius: 8px; border: none; font-size: 16px; cursor: pointer; 
+    background: #4caf50; color: white; font-weight: bold; transition: all 0.2s ease;
+    text-transform: uppercase; letter-spacing: 1px;
+}
+.btn-estilizado:hover:not(:disabled) { background: #45a049; transform: scale(1.05); }
+.btn-estilizado:disabled { opacity: 0.5; cursor: not-allowed; background: #555; }
+
+@keyframes tiritar {
+    0% { margin-left: 0px; margin-top: 0px; }
+    25% { margin-left: 1px; margin-top: -1px; }
+    50% { margin-left: -1px; margin-top: 1px; }
+    75% { margin-left: 2px; margin-top: 0px; }
+    100% { margin-left: -1px; margin-top: -2px; }
+}
+
+.bicho { 
+    position: absolute; width: 100px; height: 100px; 
+    cursor: pointer; display: flex; align-items:center; justify-content:center; 
+    color: transparent;
+    user-select: none;
+    background-image: url('/bicho.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    image-rendering: pixelated; 
+    mix-blend-mode: multiply; 
+}
