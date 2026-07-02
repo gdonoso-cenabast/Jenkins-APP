@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface Bicho {
   Id: number;
@@ -23,7 +23,7 @@ function App() {
   };
 
   const initialAppleSize = Math.min(window.innerWidth, window.innerHeight) / 1.5;
-  const manzanaRef = React.useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2, golpes: 0, visible: true, size: initialAppleSize });
+  const manzanaRef = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2, golpes: 0, visible: true, size: initialAppleSize });
   const [color, setColor] = useState<string>("");
   const [bichos, setBichos] = useState<Bicho[]>([]);
   const [squashed, setSquashed] = useState<Record<number, boolean>>({});
@@ -32,7 +32,14 @@ function App() {
     fetch('http://localhost:3000/api/bichos')
       .then(r => r.json())
       .then(data => {
-        const initial = data.map((m: any) => ({ ...m, vx: 2, vy: 2, hp: 10 }));
+        const initial = data.map((m: any) => ({ 
+          ...m, 
+          vx: 2, 
+          vy: 2, 
+          hp: 10,
+          PosicionX: Math.random() * (window.innerWidth - 150),
+          PosicionY: Math.random() * (window.innerHeight - 150) + 80
+        }));
         setBichos(initial);
       })
       .catch(e => console.log("API no conectada", e));
@@ -125,7 +132,14 @@ function App() {
       body: JSON.stringify({ color })
     });
     const m = await res.json();
-    setBichos(prev => [...prev, { ...m, vx: 2, vy: 2, hp: 10 }]);
+    setBichos(prev => [...prev, { 
+      ...m, 
+      vx: 2, 
+      vy: 2, 
+      hp: 10,
+      PosicionX: Math.random() * (window.innerWidth - 150),
+      PosicionY: Math.random() * (window.innerHeight - 150) + 80 
+    }]);
   };
 
   const aplastar = async (id: number) => {
