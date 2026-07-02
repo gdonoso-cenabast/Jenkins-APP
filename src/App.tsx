@@ -22,7 +22,8 @@ function App() {
     }
   };
 
-  const manzanaRef = React.useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2, golpes: 0, visible: true, size: 150 });
+  const initialAppleSize = Math.min(window.innerWidth, window.innerHeight) / 1.5;
+  const manzanaRef = React.useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2, golpes: 0, visible: true, size: initialAppleSize });
   const [color, setColor] = useState<string>("");
   const [bichos, setBichos] = useState<Bicho[]>([]);
   const [squashed, setSquashed] = useState<Record<number, boolean>>({});
@@ -60,7 +61,7 @@ function App() {
                ny = PosicionY + vy;
                if (m.hp < 10) m.hp += 1;
                manzanaRef.current.golpes += 1;
-               manzanaRef.current.size = 150 - (manzanaRef.current.golpes * 7.5);
+               manzanaRef.current.size = initialAppleSize - (manzanaRef.current.golpes * (initialAppleSize / 20));
                if (manzanaRef.current.golpes >= 20) manzanaRef.current.visible = false;
             }
           }
