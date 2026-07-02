@@ -8,6 +8,7 @@ interface Bicho {
   Nombre: string;
   vx: number;
   vy: number;
+  hp: number;
 }
 
 function App() {
@@ -21,6 +22,7 @@ function App() {
     }
   };
 
+  const manzanaRef = React.useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2, golpes: 0, visible: true, size: 150 });
   const [color, setColor] = useState<string>("");
   const [bichos, setBichos] = useState<Bicho[]>([]);
   const [squashed, setSquashed] = useState<Record<number, boolean>>({});
@@ -29,7 +31,7 @@ function App() {
     fetch('http://localhost:3000/api/bichos')
       .then(r => r.json())
       .then(data => {
-        const initial = data.map((m: any) => ({ ...m, vx: 2, vy: 2 }));
+        const initial = data.map((m: any) => ({ ...m, vx: 2, vy: 2, hp: 10 }));
         setBichos(initial);
       })
       .catch(e => console.log("API no conectada", e));
@@ -45,6 +47,23 @@ function App() {
           let { PosicionX, PosicionY, vx, vy } = m;
           let nx = PosicionX + vx;
           let ny = PosicionY + vy;
+          
+          // Colisión con la manzana
+          if (manzanaRef.current.visible) {
+            const cx = nx + 50; // centro del bicho
+            const cy = ny + 50;
+            const distToApple = Math.sqrt(Math.pow(cx - manzanaRef.current.x, 2) + Math.pow(cy - manzanaRef.current.y, 2));
+            if (distToApple < (manzanaRef.current.size / 2 + 50)) {
+               vx = -vx;
+               vy = -vy;
+               nx = PosicionX + vx;
+               ny = PosicionY + vy;
+               if (m.hp < 10) m.hp += 1;
+               manzanaRef.current.golpes += 1;
+               manzanaRef.current.size = 150 - (manzanaRef.current.golpes * 7.5);
+               if (manzanaRef.current.golpes >= 20) manzanaRef.current.visible = false;
+            }
+          }
           
           if (nx <= 0) { nx = 0; vx = Math.abs(vx); }
           else if (nx >= window.innerWidth - 100) { nx = window.innerWidth - 100; vx = -Math.abs(vx); }
@@ -64,6 +83,13 @@ function App() {
               // Solo rebotar si se están acercando
               if ((newBichos[j].PosicionX - newBichos[i].PosicionX) * (newBichos[i].vx - newBichos[j].vx) + 
                   (newBichos[j].PosicionY - newBichos[i].PosicionY) * (newBichos[i].vy - newBichos[j].vy) > 0) {
+                  
+                  // Daño por color distinto
+                  if (newBichos[i].Color !== newBichos[j].Color) {
+                      newBichos[i].hp -= 1;
+                      newBichos[j].hp -= 1;
+                  }
+
                   let tempVx = newBichos[i].vx;
                   let tempVy = newBichos[i].vy;
                   newBichos[i].vx = newBichos[j].vx;
@@ -74,6 +100,15 @@ function App() {
             }
           }
         }
+        
+        // Revisar muertos
+        newBichos.forEach(b => {
+          if (b.hp <= 0 && !squashed[b.Id]) {
+            // setTimeout para evitar loops de renderizado directo
+            setTimeout(() => aplastar(b.Id), 0);
+          }
+        });
+
         return newBichos;
       });
       animationFrameId = requestAnimationFrame(update);
@@ -89,7 +124,7 @@ function App() {
       body: JSON.stringify({ color })
     });
     const m = await res.json();
-    setBichos(prev => [...prev, { ...m, vx: 2, vy: 2 }]);
+    setBichos(prev => [...prev, { ...m, vx: 2, vy: 2, hp: 10 }]);
   };
 
   const aplastar = async (id: number) => {
@@ -125,17 +160,35 @@ function App() {
         <span>(Haz click en un bicho para aplastarlo)</span>
       </div>
       
+      {manzanaRef.current.visible && (
+        <div style={{
+          position: 'absolute',
+          left: manzanaRef.current.x - (manzanaRef.current.size / 2),
+          top: manzanaRef.current.y - (manzanaRef.current.size / 2),
+          width: manzanaRef.current.size,
+          height: manzanaRef.current.size,
+          backgroundImage: "url('/manzana.png')",
+          backgroundSize: 'contain',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center',
+          opacity: 0.8,
+          pointerEvents: 'none',
+          transition: 'all 0.2s ease-in-out'
+        }} />
+      )}
+
       {bichos.map(m => {
         const rot = Math.atan2(m.vy, m.vx) * (180 / Math.PI) + 90;
         return (
           <div key={m.Id} style={{ position: 'absolute', left: m.PosicionX, top: m.PosicionY, width: 100, height: 100, pointerEvents: 'none' }}>
             <div style={{ 
-              position: 'absolute', top: -25, width: '100%', textAlign: 'center', 
+              position: 'absolute', top: -35, width: '100%', textAlign: 'center', 
               color: m.Color === 'yellow' ? '#ffd700' : m.Color, 
               fontWeight: '900', textShadow: '1px 1px 2px black, -1px -1px 2px black, 1px -1px 2px black, -1px 1px 2px black', 
               fontSize: '16px', zIndex: 10, fontFamily: 'sans-serif', textTransform: 'uppercase'
             }}>
-              {getBichoName(m.Color, m.Id)}
+              <div>{m.hp}/10</div>
+              <div>{getBichoName(m.Color, m.Id)}</div>
             </div>
             <div className="bicho" 
                  onClick={() => aplastar(m.Id)} 
