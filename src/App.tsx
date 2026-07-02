@@ -1,51 +1,49 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
 interface Bicho {
   Id: number;
   PosicionX: number;
   PosicionY: number;
   Color: string;
-  Nombre: string;
   vx: number;
   vy: number;
   hp: number;
 }
 
 function App() {
-  const getBichoName = (color: string, id: number) => {
-    switch (color) {
-      case 'red': return `diego ${id}`;
-      case 'purple': return `richard ${id}`;
-      case 'yellow': return `fabian ${id}`;
-      case 'green': return `gonzalo ${id}`;
-      default: return id % 2 === 0 ? `emilio ${id}` : `pablo ${id}`;
-    }
-  };
-
-  const initialAppleSize = Math.min(window.innerWidth, window.innerHeight) / 1.5;
-  const manzanaRef = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2, golpes: 0, visible: true, size: initialAppleSize });
-  const [color, setColor] = useState<string>("");
   const [bichos, setBichos] = useState<Bicho[]>([]);
   const [squashed, setSquashed] = useState<Record<number, boolean>>({});
+  const [juegoIniciado, setJuegoIniciado] = useState(false);
 
-  useEffect(() => {
-    fetch('http://localhost:3000/api/bichos')
-      .then(r => r.json())
-      .then(data => {
-        const initial = data.map((m: any) => ({ 
-          ...m, 
-          vx: 2, 
-          vy: 2, 
-          hp: 10,
+  // Ya no usamos el useEffect inicial para cargar de la API
+  
+  const iniciarJuego = () => {
+    const colors = ['red', 'purple', 'yellow', 'green', 'blue', 'orange'];
+    const newBichos: Bicho[] = [];
+    let idCounter = 1;
+
+    colors.forEach(c => {
+      for (let i = 0; i < 10; i++) {
+        newBichos.push({
+          Id: idCounter++,
+          Color: c,
           PosicionX: Math.random() * (window.innerWidth - 150),
-          PosicionY: Math.random() * (window.innerHeight - 150) + 80
-        }));
-        setBichos(initial);
-      })
-      .catch(e => console.log("API no conectada", e));
-  }, []);
+          PosicionY: Math.random() * (window.innerHeight - 150) + 80,
+          vx: Math.random() > 0.5 ? 2.5 : -2.5,
+          vy: Math.random() > 0.5 ? 2.5 : -2.5,
+          hp: 10
+        });
+      }
+    });
+
+    setBichos(newBichos);
+    setSquashed({});
+    setJuegoIniciado(true);
+  };
 
   useEffect(() => {
+    if (!juegoIniciado) return;
+
     let animationFrameId: number;
     const update = () => {
       setBichos(prev => {
@@ -55,23 +53,6 @@ function App() {
           let { PosicionX, PosicionY, vx, vy } = m;
           let nx = PosicionX + vx;
           let ny = PosicionY + vy;
-          
-          // Colisión con la manzana
-          if (manzanaRef.current.visible) {
-            const cx = nx + 50; // centro del bicho
-            const cy = ny + 50;
-            const distToApple = Math.sqrt(Math.pow(cx - manzanaRef.current.x, 2) + Math.pow(cy - manzanaRef.current.y, 2));
-            if (distToApple < (manzanaRef.current.size / 2 + 50)) {
-               vx = -vx;
-               vy = -vy;
-               nx = PosicionX + vx;
-               ny = PosicionY + vy;
-               if (m.hp < 10) m.hp += 1;
-               manzanaRef.current.golpes += 1;
-               manzanaRef.current.size = initialAppleSize - (manzanaRef.current.golpes * (initialAppleSize / 20));
-               if (manzanaRef.current.golpes >= 20) manzanaRef.current.visible = false;
-            }
-          }
           
           if (nx <= 0) { nx = 0; vx = Math.abs(vx); }
           else if (nx >= window.innerWidth - 100) { nx = window.innerWidth - 100; vx = -Math.abs(vx); }
@@ -112,7 +93,6 @@ function App() {
         // Revisar muertos
         newBichos.forEach(b => {
           if (b.hp <= 0 && !squashed[b.Id]) {
-            // setTimeout para evitar loops de renderizado directo
             setTimeout(() => aplastar(b.Id), 0);
           }
         });
@@ -123,28 +103,10 @@ function App() {
     };
     animationFrameId = requestAnimationFrame(update);
     return () => cancelAnimationFrame(animationFrameId);
-  }, [squashed]);
+  }, [juegoIniciado, squashed]);
 
-  const crear = async () => {
-    const res = await fetch('http://localhost:3000/api/bichos', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ color })
-    });
-    const m = await res.json();
-    setBichos(prev => [...prev, { 
-      ...m, 
-      vx: 2, 
-      vy: 2, 
-      hp: 10,
-      PosicionX: Math.random() * (window.innerWidth - 150),
-      PosicionY: Math.random() * (window.innerHeight - 150) + 80 
-    }]);
-  };
-
-  const aplastar = async (id: number) => {
+  const aplastar = (id: number) => {
     setSquashed(prev => ({ ...prev, [id]: true }));
-    await fetch('http://localhost:3000/api/bichos/' + id, { method: 'DELETE' });
     setTimeout(() => {
       setBichos(prev => prev.filter(m => m.Id !== id));
     }, 300);
@@ -159,51 +121,70 @@ function App() {
     purple: 'morado',
   };
 
+  const playerNames: Record<string, string> = {
+    red: 'Diego',
+    purple: 'Richard',
+    yellow: 'Fabián',
+    green: 'Gonzalo',
+    blue: 'Emilio',
+    orange: 'Pablo'
+  };
+
+  // Calcular puntajes (bichos vivos por color)
+  const score = { red: 0, purple: 0, yellow: 0, green: 0, blue: 0, orange: 0 };
+  bichos.forEach(b => {
+    if (b.hp > 0 && !squashed[b.Id]) {
+      score[b.Color as keyof typeof score]++;
+    }
+  });
+
   return (
     <div className="arena">
-      <div className="navbar">
-        <select value={color} onChange={e => setColor(e.target.value)} className="select-estilizado">
-          <option value="">Selecciona un color</option>
-          <option value="red">Rojo</option>
-          <option value="yellow">Amarillo</option>
-          <option value="blue">Azul</option>
-          <option value="green">Verde</option>
-          <option value="purple">Morado</option>
-          <option value="orange">Naranjo</option>
-        </select>
-        <button onClick={crear} disabled={!color} className="btn-estilizado">Crear Bicho</button>
-        <span>(Haz click en un bicho para aplastarlo)</span>
+      <div style={{
+        position: 'fixed', top: 0, left: 0, width: '100%', height: '80px',
+        backgroundColor: '#111', color: 'white', display: 'flex', 
+        justifyContent: 'space-between', alignItems: 'center', padding: '0 20px',
+        zIndex: 1000, boxShadow: '0 4px 6px rgba(0,0,0,0.5)', boxSizing: 'border-box'
+      }}>
+        {!juegoIniciado ? (
+          <button 
+            onClick={iniciarJuego} 
+            style={{ padding: '10px 30px', fontSize: '20px', fontWeight: 'bold', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+            START BATTLE
+          </button>
+        ) : (
+          <button 
+            onClick={iniciarJuego} 
+            style={{ padding: '10px 20px', fontSize: '16px', backgroundColor: '#555', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+            RESTART
+          </button>
+        )}
+
+        <div style={{ display: 'flex', gap: '20px', fontSize: '18px', fontWeight: 'bold' }}>
+          {Object.entries(score).map(([col, count]) => (
+            <div key={col} style={{ 
+              color: col === 'yellow' ? '#ffd700' : col,
+              textShadow: '1px 1px 2px black',
+              display: 'flex', flexDirection: 'column', alignItems: 'center'
+            }}>
+              <span>{playerNames[col]}</span>
+              <span style={{ fontSize: '24px' }}>{count}</span>
+            </div>
+          ))}
+        </div>
       </div>
-      
-      {manzanaRef.current.visible && (
-        <div style={{
-          position: 'absolute',
-          left: manzanaRef.current.x - (manzanaRef.current.size / 2),
-          top: manzanaRef.current.y - (manzanaRef.current.size / 2),
-          width: manzanaRef.current.size,
-          height: manzanaRef.current.size,
-          backgroundImage: "url('/manzana.png')",
-          backgroundSize: 'contain',
-          backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'center',
-          opacity: 0.8,
-          pointerEvents: 'none',
-          transition: 'all 0.2s ease-in-out'
-        }} />
-      )}
 
       {bichos.map(m => {
         const rot = Math.atan2(m.vy, m.vx) * (180 / Math.PI) + 90;
         return (
           <div key={m.Id} style={{ position: 'absolute', left: m.PosicionX, top: m.PosicionY, width: 100, height: 100, pointerEvents: 'none' }}>
             <div style={{ 
-              position: 'absolute', top: -35, width: '100%', textAlign: 'center', 
+              position: 'absolute', top: -20, width: '100%', textAlign: 'center', 
               color: m.Color === 'yellow' ? '#ffd700' : m.Color, 
               fontWeight: '900', textShadow: '1px 1px 2px black, -1px -1px 2px black, 1px -1px 2px black, -1px 1px 2px black', 
-              fontSize: '16px', zIndex: 10, fontFamily: 'sans-serif', textTransform: 'uppercase'
+              fontSize: '20px', zIndex: 10, fontFamily: 'sans-serif'
             }}>
-              <div>{m.hp}/10</div>
-              <div>{getBichoName(m.Color, m.Id)}</div>
+              {m.hp}/10
             </div>
             <div className="bicho" 
                  onClick={() => aplastar(m.Id)} 
