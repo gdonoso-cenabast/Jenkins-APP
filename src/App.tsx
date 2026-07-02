@@ -11,6 +11,16 @@ interface Bicho {
 }
 
 function App() {
+  const getBichoName = (color: string, id: number) => {
+    switch (color) {
+      case 'red': return `diego ${id}`;
+      case 'purple': return `richard ${id}`;
+      case 'yellow': return `fabian ${id}`;
+      case 'green': return `gonzalo ${id}`;
+      default: return id % 2 === 0 ? `emilio ${id}` : `pablo ${id}`;
+    }
+  };
+
   const [color, setColor] = useState<string>("");
   const [bichos, setBichos] = useState<Bicho[]>([]);
   const [squashed, setSquashed] = useState<Record<number, boolean>>({});
@@ -125,7 +135,7 @@ function App() {
               fontWeight: '900', textShadow: '1px 1px 2px black, -1px -1px 2px black, 1px -1px 2px black, -1px 1px 2px black', 
               fontSize: '16px', zIndex: 10, fontFamily: 'sans-serif', textTransform: 'uppercase'
             }}>
-              {m.Nombre}
+              {getBichoName(m.Color, m.Id)}
             </div>
             <div className="bicho" 
                  onClick={() => aplastar(m.Id)} 
